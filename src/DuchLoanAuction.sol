@@ -17,12 +17,12 @@ contract DuchLoanAuction is ERC20Burnable {
     address nftCollateralAddress;
     uint256 nftCollateralTokenId;
 
+    State public state;
+
     // Auction
     uint256 public immutable auctionStartTime;
     uint256 public immutable auctionDuration;
     UD60x18 public immutable principal;
-    bool auctionSettled;
-    bool auctionUnsuccessful;
 
     // During auction phase this variable is the upper bound (max interest rate).
     // During loan phase, this is the actual interest rate
@@ -54,6 +54,23 @@ contract DuchLoanAuction is ERC20Burnable {
     event PartialRepayment(address indexed repayer, UD60x18 indexed amount);
     event LiquidationStarted();
     event LiquidationEnded(UD60x18 finalPayout);
+
+    // Modifiers
+
+    modifier onlyState(state _state, string memory err) {
+        require(state == _state, err);
+        _;
+    }
+
+    // Enums
+    enum State {
+        AuctionPhase,
+        AuctionUnsuccessful,
+        LoanPhase,
+        LoanPaid,
+        LiquidationPhase,
+        LiquidationPaid
+    }
 
     // Constructor -------------------------------
     constructor(
@@ -94,7 +111,7 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     // External functions ----------------------
-    function bid(UD60x18 amount) external {
+    function bid(UD60x18 amount) external onlyState(State.AuctionPhase) {
         require(
             block.timestamp > auctionStartTime,
             "Auction has not started yet"
@@ -107,7 +124,6 @@ contract DuchLoanAuction is ERC20Burnable {
             unwrap(amount) < unwrap(principal.sub(debt)),
             "Excessive bid amount"
         );
-        require(!auctionSettled, "Auction has already been settled");
 
         // Bid zero to complete the loan
         if (unwrap(amount) == 0) {
@@ -123,11 +139,9 @@ contract DuchLoanAuction is ERC20Burnable {
                 address(this),
                 unwrap(amount)
             );
-        }
-
-        // Increase total loan amount raised
-        unchecked {
-            debt = debt.add(amount);
+            unchecked {
+                debt = debt.add(amount);
+            }
         }
 
         // Mint debt securities
@@ -136,22 +150,19 @@ contract DuchLoanAuction is ERC20Burnable {
         emit Bid(msg.sender, amount);
     }
 
-    function unsuccessfulAuction() external {
+    function unsuccessfulAuction() external onlyState(State.AuctionPhase) {
         require(
             block.timestamp > auctionStartTime + auctionDuration,
             "Auction still active"
         );
-        require(!auctionSettled, "Auction settled");
-        require(!auctionUnsuccessful, "Auction already declared unsuccessful");
-
         distribute();
-        auctionUnsuccessful = true;
+        state = State.AuctionUnsuccessful;
+
         emit AuctionUnsuccessful();
     }
 
-    function withdrawLoan() external {
+    function withdrawLoan() external onlyState(State.LoanPhase) {
         require(msg.sender == debtor, "Only debtor can withdraw loan");
-        require(auctionSettled, "Auction not settled");
         require(!loanWithdrawn, "Loan already withdrawn");
 
         denominatedToken.transfer(debtor, unwrap(principal));
@@ -159,7 +170,7 @@ contract DuchLoanAuction is ERC20Burnable {
         emit LoanWithdrawn(principal);
     }
 
-    function repayLoan(UD60x18 amount) external {
+    function repayLoan(UD60x18 amount) external onlyState(State.LoanPhase) {
         require(loanWithdrawn, "Loan not withdrawn");
         require(amount.lt(debt), "Invalid repayment amount");
 
@@ -181,6 +192,7 @@ contract DuchLoanAuction is ERC20Burnable {
                 debtor,
                 nftCollateralTokenId
             );
+            state = State.LoanPaid;
 
             emit FullRepayment(msg.sender);
         } else {
@@ -196,11 +208,10 @@ contract DuchLoanAuction is ERC20Burnable {
         }
     }
 
-    function liquidateCollateral() external {
-        require(auctionSettled, "Auction not settled");
+    function liquidateCollateral() external onlyState(State.LoanPhase) {
         require(block.timestamp > loanEndTime, "Loan still active");
-        require(unwrap(debt) > 0, "Debt has been paid off");
 
+        state = State.LiquidationPhase;
         liquidator = new DuchLiquidator(
             nftCollateralAddress,
             nftCollateralTokenId,
@@ -211,17 +222,22 @@ contract DuchLoanAuction is ERC20Burnable {
         emit LiquidationStarted();
     }
 
-    function payoutLiquidation() external {
+    function payoutLiquidation() external onlyState(State.LiquidationPhase) {
         require(msg.sender == address(liquidator), "Only liquidator");
         UD60x18 finalPayout = wrap(denominatedToken.balanceOf(address(this)));
         distribute();
+        state = State.LiquidationComplete;
 
         emit LiquidationEnded(finalPayout);
     }
 
     // Public functions ----------------------------
-    function getCurrentInterestRate() public view returns (UD60x18) {
-        require(!auctionSettled, "Auction has been settled");
+    function getCurrentInterestRate()
+        public
+        view
+        onlyState(State.AuctionPhase)
+        returns (UD60x18)
+    {
         UD60x18 k = maxIRatePerSecond.div(toUD60x18(auctionDuration).sqrt());
         uint256 auctionTimeElapsed = block.timestamp - auctionStartTime;
         UD60x18 iRatePerSecond = k.mul(toUD60x18(auctionTimeElapsed).sqrt());
@@ -242,7 +258,7 @@ contract DuchLoanAuction is ERC20Burnable {
 
     function settleAuction() internal {
         UD60x18 iRatePerSecond = getCurrentInterestRate();
-        auctionSettled = true;
+        state = State.LoanPhase;
         loanEndTime = block.timestamp + loanTerm;
         debt = principal.add(iRatePerSecond.mul(toUD60x18(loanTerm))); // Debt set to maturity loan value (principal + interest)
 
