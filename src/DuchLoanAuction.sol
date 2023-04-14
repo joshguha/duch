@@ -137,6 +137,40 @@ contract DuchLoanAuction is ERC20Burnable {
         denominatedToken.transfer(debtor, unwrap(principal));
     }
 
+    function repayLoan(UD60x18 amount) external {
+        require(loanWithdrawn, "Loan not withdrawn");
+        require(amount.lt(debt), "Invalid repayment amount");
+
+        // Repay with amount 0 to repay entire loan
+        if (unwrap(amount) == 0) {
+            denominatedToken.transferFrom(
+                msg.sender,
+                address(this),
+                unwrap(debt)
+            );
+            debt = wrap(0);
+
+            // Pay back all distribution token holders
+            distribute();
+
+            // Return collateral from escrow;
+            IERC721(nftCollateralAddress).transferFrom(
+                address(this),
+                debtor,
+                nftCollateralTokenId
+            );
+        } else {
+            denominatedToken.transferFrom(
+                msg.sender,
+                address(this),
+                unwrap(amount)
+            );
+            unchecked {
+                debt = debt.sub(amount);
+            }
+        }
+    }
+
     // Internal functions ----------------------------
     /// @notice Takes the entire balance of the designated spreaderToken in the contract and distributes it out to unit holders w/ IDA
     function distribute() public {
@@ -154,5 +188,6 @@ contract DuchLoanAuction is ERC20Burnable {
         UD60x18 k = iRatePerSecond.div(toUD60x18(auctionDuration).sqrt()); // iRatePerSecond is max interest rate
         uint256 auctionTimeElapsed = block.timestamp - auctionStartTime;
         iRatePerSecond = k.mul(toUD60x18(auctionTimeElapsed).sqrt()); // iRatePerSecond set to actual interest rate for loan
+        debt = principal.add(iRatePerSecond.mul(loanTerm)); // Debt set to maturity loan value (principal + interest)
     }
 }
