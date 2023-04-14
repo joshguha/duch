@@ -9,6 +9,21 @@ import "./DuchLiquidator.sol";
 import "./DuchCoordinator.sol";
 import "./libraries/Errors.sol";
 
+/**
+ * @title DuchLoanAuction: NFT-collateralized lending
+ * @author Josh Guha @ ETHGlobal Tokyo 2023
+ * @notice Contract for securitising NFT-collateralized loans and
+ *         selling them at optimal market prices via a market-clearing Dutch auction
+ * @notice Lenders compete to purchase distribution units of debt
+ * @notice Though the market is cleared by the interest rate rising over time the auction is still
+ *         Dutch (descending price) because the price of future repayment income in terms of
+ *         present lending income decreases over time
+ * @notice This project was inspired by a podcast on NFT auctions by a16z
+ *         https://web3-with-a16z.simplecast.com/episodes/auction-design-mechanisms-incentives-choices-tradeoffs
+ * @dev Built using Superfluid IDAs for loan repayment
+ * @dev The loan is denominated and paid in a Superfluid SuperToken
+ */
+
 contract DuchLoanAuction is ERC20Burnable {
     /// @notice SuperToken Library
     using SuperTokenV1Library for ISuperToken;
@@ -41,7 +56,7 @@ contract DuchLoanAuction is ERC20Burnable {
 
     // Contracts
     DuchLiquidator liquidator;
-    DuchCoordinator public immutable coordinator;
+    DuchCoordinator private immutable coordinator;
 
     // Events ------------------------------------
     event Bid(address indexed bidder, UD60x18 amount, UD60x18 debtRaised);
@@ -57,7 +72,6 @@ contract DuchLoanAuction is ERC20Burnable {
     event LiquidationPaid(UD60x18 liquidationValue);
 
     // Modifiers
-
     modifier onlyAuctionPhase() {
         require(state == State.AuctionPhase, Errors.ONLY_AUCTION_PHASE);
         _;
@@ -84,6 +98,18 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     // Constructor -------------------------------
+    /**
+     * @dev Only to be called by the DuchCoordinator contract
+     * @param _nftCollateralAddress Address of NFT collateral
+     * @param _nftCollateralTokenId Token ID of NFT collateral
+     * @param _auctionStartTime UNIX timestamp of the auction start time (in seconds)
+     * @param _auctionDuration Number of seconds which the auction is active
+     * @param _principal Desired principal of loan
+     * @param _maxIRatePerSecond Maximum interest rate per second which the borrower is willing to pay
+     * @param _loanTerm Duration of the loan in seconds
+     * @param _denominatedToken Address of the SuperToken which denominates the loan
+     * @param _debtor Address of the debtor: receives the loan / collateral upon repayment of loan
+     */
     constructor(
         address _nftCollateralAddress,
         uint256 _nftCollateralTokenId,
@@ -116,6 +142,11 @@ contract DuchLoanAuction is ERC20Burnable {
         _denominatedToken.createIndex(INDEX_ID);
     }
 
+    /**
+     * @notice When called with amount 0, bids the remaining amount of the principal and starts the loan
+     * @notice If principal is not raised in the auction duration, amount can be returned to token holders
+     * @param amount Amount of denominated token to commit to the loan
+     */
     // External functions ----------------------
     function bid(UD60x18 amount) external onlyAuctionPhase {
         require(
@@ -156,17 +187,30 @@ contract DuchLoanAuction is ERC20Burnable {
         emit Bid(msg.sender, amount, debt);
     }
 
+    /**
+     * @notice When auction expires and loan has not started, loan amount can be returned to lenders
+     */
     function collectFromUnsuccessfulAuction() external onlyAuctionPhase {
         require(
             block.timestamp > auctionStartTime + auctionDuration,
             Errors.AUCTION_STILL_ACTIVE
         );
         distribute();
+        coordinator.endLoanAuction(
+            nftCollateralAddress,
+            nftCollateralTokenId,
+            debtor
+        );
         state = State.AuctionUnsuccessful;
 
         emit AuctionUnsuccessful();
     }
 
+    /**
+     * @notice When loan ends, either pays back lenders and returns collateral to
+     *         borrower or begins the liquidation process of the collateral
+     * @notice The starting price of (principal * 2) was an arbitrary choice
+     */
     function endLoan() external onlyLoanPhase {
         require(block.timestamp > loanEndTime, Errors.LOAN_STILL_ACTIVE);
 
@@ -193,6 +237,12 @@ contract DuchLoanAuction is ERC20Burnable {
         }
     }
 
+    /**
+     * @notice Pays out the liquidation value to token holders
+     * @dev Only the relevant DuchLiquidator contract can call this function
+     * @param collateralRecipient Recipient address of the NFT collateral
+     * @param liquidationValue Total value arising from the liquidation of the NFT collateral (for logging in an event)
+     */
     function payoutLiquidation(
         address collateralRecipient,
         UD60x18 liquidationValue
@@ -210,6 +260,22 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     // Public functions ----------------------------
+
+    /**
+     * @notice Public function to view the current interest rate during the auction phase
+     * @return iRatePerSecond Per second interest as calculated by the following formula:
+     *
+     *      i_current = k * (t ^ 1/2)
+     *
+     *      where i_current is the current interest rate per second
+     *      t is the auction time elapsed in seconds
+     *      k is the constant calculated such that
+     *
+     *      k = i_max / t_max
+     *
+     *      where i_max is the maximum interest rate per second
+     *      t_max is auction duration
+     */
     function getCurrentInterestRate()
         public
         view
@@ -224,6 +290,9 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     // Internal functions ----------------------------
+    /**
+        @notice Calculates interest based on time in auction and sends principal to borrower
+     */
     function startLoan() internal {
         UD60x18 iRatePerSecond = getCurrentInterestRate();
         state = State.LoanPhase;
@@ -237,8 +306,10 @@ contract DuchLoanAuction is ERC20Burnable {
         emit LoanStarted(iRatePerSecond, principal, totalInterest, debt);
     }
 
-    /// @notice Takes the entire balance of the designated denominated token
-    ///         in the contract and distributes it out to unit holders w/ IDA
+    /**
+     * @notice Takes the entire balance of the designated denominated token
+     * in the contract and distributes it out to unit holders w/ IDA
+     */
     function distribute() public {
         uint256 balance = denominatedToken.balanceOf(address(this));
 
@@ -248,6 +319,10 @@ contract DuchLoanAuction is ERC20Burnable {
         denominatedToken.distribute(INDEX_ID, actualDistributionAmount);
     }
 
+    /**
+     * @notice Hook to transfer IDA subscription units along with the ERC20 tokens
+     * @dev Overrides Openzeppelin's implementation of ERC20 _afterTokenTransfer
+     */
     function _afterTokenTransfer(
         address from,
         address to,
