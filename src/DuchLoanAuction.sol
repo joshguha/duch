@@ -20,6 +20,7 @@ contract DuchLoanAuction is ERC20Burnable {
     uint256 public immutable auctionDuration;
     UD60x18 public immutable principal;
     bool auctionSettled;
+    bool auctionUnsuccessful;
 
     // During auction phase this variable is the upper bound (max interest rate).
     // During loan phase, this is the actual interest rate
@@ -38,6 +39,14 @@ contract DuchLoanAuction is ERC20Burnable {
 
     /// @notice SuperToken Library
     uint32 public constant INDEX_ID = 0;
+
+    // Events ------------------------------------
+    event Bid(address indexed bidder, UD60x18 amount);
+    event AuctionSettled(UD60x18 iRatePerSecond, UD60x18 maturityLoanValue);
+    event AuctionUnsuccessful();
+    event LoanWithdrawn(UD60x18 principal);
+    event FullRepayment(address indexed repayer);
+    event PartialRepayment(address indexed repayer, UD60x18 indexed amount);
 
     // Constructor -------------------------------
     constructor(
@@ -117,6 +126,8 @@ contract DuchLoanAuction is ERC20Burnable {
 
         // Mint debt securities
         _mint(msg.sender, unwrap(amount));
+
+        emit Bid(msg.sender, amount);
     }
 
     function unsuccessfulAuction() external {
@@ -125,8 +136,11 @@ contract DuchLoanAuction is ERC20Burnable {
             "Auction still active"
         );
         require(!auctionSettled, "Auction settled");
+        require(!auctionUnsuccessful, "Auction already declared unsuccessful");
 
         distribute();
+        auctionUnsuccessful = true;
+        emit AuctionUnsuccessful();
     }
 
     function withdrawLoan() external {
@@ -135,6 +149,8 @@ contract DuchLoanAuction is ERC20Burnable {
         require(!loanWithdrawn, "Loan already withdrawn");
 
         denominatedToken.transfer(debtor, unwrap(principal));
+
+        emit LoanWithdrawn(principal);
     }
 
     function repayLoan(UD60x18 amount) external {
@@ -159,6 +175,8 @@ contract DuchLoanAuction is ERC20Burnable {
                 debtor,
                 nftCollateralTokenId
             );
+
+            emit FullRepayment(msg.sender);
         } else {
             denominatedToken.transferFrom(
                 msg.sender,
@@ -168,6 +186,7 @@ contract DuchLoanAuction is ERC20Burnable {
             unchecked {
                 debt = debt.sub(amount);
             }
+            emit PartialRepayment(msg.sender, amount);
         }
     }
 
@@ -197,5 +216,7 @@ contract DuchLoanAuction is ERC20Burnable {
         auctionSettled = true;
         loanEndTime = block.timestamp + loanTerm;
         debt = principal.add(iRatePerSecond.mul(toUD60x18(loanTerm))); // Debt set to maturity loan value (principal + interest)
+
+        emit AuctionSettled(iRatePerSecond, debt);
     }
 }
