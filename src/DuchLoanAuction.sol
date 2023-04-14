@@ -57,8 +57,18 @@ contract DuchLoanAuction is ERC20Burnable {
 
     // Modifiers
 
-    modifier onlyState(state _state, string memory err) {
-        require(state == _state, err);
+    modifier onlyAuctionPhase() {
+        require(state == State.AuctionPhase, "Not Auction Phase");
+        _;
+    }
+
+    modifier onlyLoanPhase() {
+        require(state == State.LoanPhase, "Not Loan Phase");
+        _;
+    }
+
+    modifier onlyLiquidationPhase() {
+        require(state == State.LiquidationPhase, "Not Liquidation Phase");
         _;
     }
 
@@ -111,7 +121,7 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     // External functions ----------------------
-    function bid(UD60x18 amount) external onlyState(State.AuctionPhase) {
+    function bid(UD60x18 amount) external onlyAuctionPhase {
         require(
             block.timestamp > auctionStartTime,
             "Auction has not started yet"
@@ -150,7 +160,7 @@ contract DuchLoanAuction is ERC20Burnable {
         emit Bid(msg.sender, amount);
     }
 
-    function unsuccessfulAuction() external onlyState(State.AuctionPhase) {
+    function unsuccessfulAuction() external onlyAuctionPhase {
         require(
             block.timestamp > auctionStartTime + auctionDuration,
             "Auction still active"
@@ -161,7 +171,7 @@ contract DuchLoanAuction is ERC20Burnable {
         emit AuctionUnsuccessful();
     }
 
-    function withdrawLoan() external onlyState(State.LoanPhase) {
+    function withdrawLoan() external onlyLoanPhase {
         require(msg.sender == debtor, "Only debtor can withdraw loan");
         require(!loanWithdrawn, "Loan already withdrawn");
 
@@ -170,7 +180,7 @@ contract DuchLoanAuction is ERC20Burnable {
         emit LoanWithdrawn(principal);
     }
 
-    function repayLoan(UD60x18 amount) external onlyState(State.LoanPhase) {
+    function repayLoan(UD60x18 amount) external onlyLoanPhase {
         require(loanWithdrawn, "Loan not withdrawn");
         require(amount.lt(debt), "Invalid repayment amount");
 
@@ -208,7 +218,7 @@ contract DuchLoanAuction is ERC20Burnable {
         }
     }
 
-    function liquidateCollateral() external onlyState(State.LoanPhase) {
+    function liquidateCollateral() external onlyLoanPhase {
         require(block.timestamp > loanEndTime, "Loan still active");
 
         state = State.LiquidationPhase;
@@ -222,7 +232,7 @@ contract DuchLoanAuction is ERC20Burnable {
         emit LiquidationStarted();
     }
 
-    function payoutLiquidation() external onlyState(State.LiquidationPhase) {
+    function payoutLiquidation() external onlyLiquidationPhase {
         require(msg.sender == address(liquidator), "Only liquidator");
         UD60x18 finalPayout = wrap(denominatedToken.balanceOf(address(this)));
         distribute();
@@ -235,7 +245,7 @@ contract DuchLoanAuction is ERC20Burnable {
     function getCurrentInterestRate()
         public
         view
-        onlyState(State.AuctionPhase)
+        onlyAuctionPhase
         returns (UD60x18)
     {
         UD60x18 k = maxIRatePerSecond.div(toUD60x18(auctionDuration).sqrt());
@@ -263,5 +273,39 @@ contract DuchLoanAuction is ERC20Burnable {
         debt = principal.add(iRatePerSecond.mul(toUD60x18(loanTerm))); // Debt set to maturity loan value (principal + interest)
 
         emit AuctionSettled(iRatePerSecond, debt);
+    }
+
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
+        if (from != address(0)) {
+            (, , uint256 currentUnitsHeld, ) = denominatedToken.getSubscription(
+                address(this),
+                INDEX_ID,
+                from
+            );
+
+            denominatedToken.updateSubscriptionUnits(
+                INDEX_ID,
+                from,
+                uint128(currentUnitsHeld - amount)
+            );
+        }
+
+        if (to != address(0)) {
+            (, , uint256 currentUnitsHeld, ) = denominatedToken.getSubscription(
+                address(this),
+                INDEX_ID,
+                to
+            );
+
+            denominatedToken.updateSubscriptionUnits(
+                INDEX_ID,
+                to,
+                uint128(currentUnitsHeld + amount)
+            );
+        }
     }
 }
