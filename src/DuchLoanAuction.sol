@@ -36,7 +36,6 @@ contract DuchLoanAuction is ERC20Burnable {
     uint256 public immutable loanTerm;
     ISuperToken public immutable denominatedToken;
     address public immutable debtor;
-    bool loanWithdrawn;
     uint256 loanEndTime;
 
     /// @notice SuperToken Library
@@ -46,14 +45,17 @@ contract DuchLoanAuction is ERC20Burnable {
     DuchLiquidator liquidator;
 
     // Events ------------------------------------
-    event Bid(address indexed bidder, UD60x18 amount);
-    event AuctionSettled(UD60x18 iRatePerSecond, UD60x18 maturityLoanValue);
+    event Bid(address indexed bidder, UD60x18 amount, UD60x18 debtRaised);
     event AuctionUnsuccessful();
-    event LoanWithdrawn(UD60x18 principal);
-    event FullRepayment(address indexed repayer);
-    event PartialRepayment(address indexed repayer, UD60x18 indexed amount);
+    event LoanStarted(
+        UD60x18 iRatePerSecond,
+        UD60x18 principal,
+        UD60x18 totalInterest,
+        UD60x18 maturityLoanValue
+    );
+    event LoanPaid();
     event LiquidationStarted();
-    event LiquidationEnded(UD60x18 finalPayout);
+    event LiquidationPaid(UD60x18 finalPayout);
 
     // Modifiers
 
@@ -142,7 +144,7 @@ contract DuchLoanAuction is ERC20Burnable {
                 address(this),
                 unwrap(principal.sub(debt))
             );
-            settleAuction();
+            startLoan();
         } else {
             denominatedToken.transferFrom(
                 msg.sender,
@@ -157,10 +159,10 @@ contract DuchLoanAuction is ERC20Burnable {
         // Mint debt securities
         _mint(msg.sender, unwrap(amount));
 
-        emit Bid(msg.sender, amount);
+        emit Bid(msg.sender, amount, debt);
     }
 
-    function unsuccessfulAuction() external onlyAuctionPhase {
+    function collectFromUnsuccessfulAuction() external onlyAuctionPhase {
         require(
             block.timestamp > auctionStartTime + auctionDuration,
             "Auction still active"
@@ -171,74 +173,34 @@ contract DuchLoanAuction is ERC20Burnable {
         emit AuctionUnsuccessful();
     }
 
-    function withdrawLoan() external onlyLoanPhase {
-        require(msg.sender == debtor, "Only debtor can withdraw loan");
-        require(!loanWithdrawn, "Loan already withdrawn");
-
-        denominatedToken.transfer(debtor, unwrap(principal));
-
-        emit LoanWithdrawn(principal);
-    }
-
-    function repayLoan(UD60x18 amount) external onlyLoanPhase {
-        require(loanWithdrawn, "Loan not withdrawn");
-        require(amount.lt(debt), "Invalid repayment amount");
-
-        // Repay with amount 0 to repay entire loan
-        if (unwrap(amount) == 0) {
-            denominatedToken.transferFrom(
-                msg.sender,
-                address(this),
-                unwrap(debt)
-            );
-            debt = wrap(0);
-
-            // Pay back all distribution token holders
-            distribute();
-
-            // Return collateral from escrow;
-            IERC721(nftCollateralAddress).transferFrom(
-                address(this),
-                debtor,
-                nftCollateralTokenId
-            );
-            state = State.LoanPaid;
-
-            emit FullRepayment(msg.sender);
-        } else {
-            denominatedToken.transferFrom(
-                msg.sender,
-                address(this),
-                unwrap(amount)
-            );
-            unchecked {
-                debt = debt.sub(amount);
-            }
-            emit PartialRepayment(msg.sender, amount);
-        }
-    }
-
-    function liquidateCollateral() external onlyLoanPhase {
+    function endLoan() external onlyLoanPhase {
         require(block.timestamp > loanEndTime, "Loan still active");
 
-        state = State.LiquidationPhase;
-        liquidator = new DuchLiquidator(
-            nftCollateralAddress,
-            nftCollateralTokenId,
-            principal.mul(wrap(2)),
-            denominatedToken
-        );
+        uint256 balance = denominatedToken.balanceOf(address(this));
 
-        emit LiquidationStarted();
+        if (balance >= unwrap(debt)) {
+            distribute();
+            state = State.LoanPaid;
+            emit LoanPaid();
+        } else {
+            liquidator = new DuchLiquidator(
+                nftCollateralAddress,
+                nftCollateralTokenId,
+                principal.mul(wrap(2)),
+                denominatedToken
+            );
+            state = State.LiquidationPhase;
+            emit LiquidationStarted();
+        }
     }
 
     function payoutLiquidation() external onlyLiquidationPhase {
         require(msg.sender == address(liquidator), "Only liquidator");
         UD60x18 finalPayout = wrap(denominatedToken.balanceOf(address(this)));
         distribute();
-        state = State.LiquidationComplete;
+        state = State.LiquidationPaid;
 
-        emit LiquidationEnded(finalPayout);
+        emit LiquidationPaid(finalPayout);
     }
 
     // Public functions ----------------------------
@@ -256,7 +218,21 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     // Internal functions ----------------------------
-    /// @notice Takes the entire balance of the designated spreaderToken in the contract and distributes it out to unit holders w/ IDA
+    function startLoan() internal {
+        UD60x18 iRatePerSecond = getCurrentInterestRate();
+        state = State.LoanPhase;
+        loanEndTime = block.timestamp + loanTerm;
+        UD60x18 totalInterest = iRatePerSecond.mul(toUD60x18(loanTerm));
+        debt = principal.add(totalInterest); // Debt set to maturity loan value (principal + interest)
+
+        // Send debtor the loan
+        denominatedToken.transfer(debtor, unwrap(principal));
+
+        emit LoanStarted(iRatePerSecond, principal, totalInterest, debt);
+    }
+
+    /// @notice Takes the entire balance of the designated denominated token
+    ///         in the contract and distributes it out to unit holders w/ IDA
     function distribute() public {
         uint256 balance = denominatedToken.balanceOf(address(this));
 
@@ -264,15 +240,6 @@ contract DuchLoanAuction is ERC20Burnable {
             .calculateDistribution(address(this), INDEX_ID, balance);
 
         denominatedToken.distribute(INDEX_ID, actualDistributionAmount);
-    }
-
-    function settleAuction() internal {
-        UD60x18 iRatePerSecond = getCurrentInterestRate();
-        state = State.LoanPhase;
-        loanEndTime = block.timestamp + loanTerm;
-        debt = principal.add(iRatePerSecond.mul(toUD60x18(loanTerm))); // Debt set to maturity loan value (principal + interest)
-
-        emit AuctionSettled(iRatePerSecond, debt);
     }
 
     function _afterTokenTransfer(
