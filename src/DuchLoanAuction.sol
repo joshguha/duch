@@ -39,7 +39,7 @@ contract DuchLoanAuction is ERC20Burnable {
     uint256 public immutable auctionStartTime;
     uint256 public immutable auctionDuration;
     UD60x18 public immutable principal;
-    UD60x18 public immutable maxIRatePerSecond;
+    UD60x18 public immutable k;
 
     // During auction phase, this represents amount of debt raised from bidders
     // During loan phase, this represents maturity value of loan (principal + interest)
@@ -131,12 +131,14 @@ contract DuchLoanAuction is ERC20Burnable {
         auctionStartTime = _auctionStartTime;
         auctionDuration = _auctionDuration;
         principal = _principal;
-        maxIRatePerSecond = _maxIRatePerSecond;
         loanTerm = _loanTerm;
         denominatedToken = _denominatedToken;
         debtor = _debtor;
 
         coordinator = DuchCoordinator(msg.sender);
+
+        // Calculate k (see getCurrentInterestRate below)
+        k = _maxIRatePerSecond.div(toUD60x18(auctionDuration).sqrt());
 
         // Creates the IDA Index through which tokens will be distributed
         _denominatedToken.createIndex(INDEX_ID);
@@ -282,7 +284,6 @@ contract DuchLoanAuction is ERC20Burnable {
         onlyAuctionPhase
         returns (UD60x18)
     {
-        UD60x18 k = maxIRatePerSecond.div(toUD60x18(auctionDuration).sqrt());
         uint256 auctionTimeElapsed = block.timestamp - auctionStartTime;
         UD60x18 iRatePerSecond = k.mul(toUD60x18(auctionTimeElapsed).sqrt());
 
