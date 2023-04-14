@@ -2,11 +2,11 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {UD60x18, unwrap, wrap, toUD60x18} from "@prb/math/UD60x18.sol";
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import "./DuchLiquidator.sol";
+import "./DuchCoordinator.sol";
 import "./libraries/Errors.sol";
 
 contract DuchLoanAuction is ERC20Burnable {
@@ -41,6 +41,7 @@ contract DuchLoanAuction is ERC20Burnable {
 
     // Contracts
     DuchLiquidator liquidator;
+    DuchCoordinator public immutable coordinator;
 
     // Events ------------------------------------
     event Bid(address indexed bidder, UD60x18 amount, UD60x18 debtRaised);
@@ -53,7 +54,7 @@ contract DuchLoanAuction is ERC20Burnable {
     );
     event LoanPaid();
     event LiquidationStarted();
-    event LiquidationPaid(UD60x18 finalPayout);
+    event LiquidationPaid(UD60x18 liquidationValue);
 
     // Modifiers
 
@@ -109,12 +110,7 @@ contract DuchLoanAuction is ERC20Burnable {
         denominatedToken = _denominatedToken;
         debtor = _debtor;
 
-        // Escrow collateral
-        IERC721(nftCollateralAddress).transferFrom(
-            msg.sender,
-            address(this),
-            _nftCollateralTokenId
-        );
+        coordinator = DuchCoordinator(msg.sender);
 
         // Creates the IDA Index through which tokens will be distributed
         _denominatedToken.createIndex(INDEX_ID);
@@ -179,6 +175,11 @@ contract DuchLoanAuction is ERC20Burnable {
         if (balance >= unwrap(debt)) {
             distribute();
             state = State.LoanPaid;
+            coordinator.endLoanAuction(
+                nftCollateralAddress,
+                nftCollateralTokenId,
+                debtor
+            );
             emit LoanPaid();
         } else {
             liquidator = new DuchLiquidator(
@@ -192,13 +193,20 @@ contract DuchLoanAuction is ERC20Burnable {
         }
     }
 
-    function payoutLiquidation() external onlyLiquidationPhase {
+    function payoutLiquidation(
+        address collateralRecipient,
+        UD60x18 liquidationValue
+    ) external onlyLiquidationPhase {
         require(msg.sender == address(liquidator), Errors.ONLY_LIQUIDATOR);
-        UD60x18 finalPayout = wrap(denominatedToken.balanceOf(address(this)));
         distribute();
         state = State.LiquidationPaid;
+        coordinator.endLoanAuction(
+            nftCollateralAddress,
+            nftCollateralTokenId,
+            collateralRecipient
+        );
 
-        emit LiquidationPaid(finalPayout);
+        emit LiquidationPaid(liquidationValue);
     }
 
     // Public functions ----------------------------

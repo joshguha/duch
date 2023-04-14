@@ -12,4 +12,5 @@ library Errors {
     string public constant AUCTION_STILL_ACTIVE = "8";
     string public constant LOAN_STILL_ACTIVE = "9";
     string public constant ONLY_LIQUIDATOR = "10";
+    string public constant ONLY_ACTIVE_LOAN = "11";
 }

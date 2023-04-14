@@ -58,7 +58,7 @@ contract DuchLiquidator {
             unwrap(price)
         );
 
-        activeLoanAuction.payoutLiquidation();
+        activeLoanAuction.payoutLiquidation(msg.sender, price);
 
         selfdestruct(payable(msg.sender)); // Shouldn't hold ETH
     }
