@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {UD60x18, unwrap, wrap, toUD60x18} from "@prb/math/UD60x18.sol";
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import "./DuchLiquidator.sol";
 
 contract DuchLoanAuction is ERC20Burnable {
     /// @notice SuperToken Library
@@ -41,6 +42,9 @@ contract DuchLoanAuction is ERC20Burnable {
     /// @notice SuperToken Library
     uint32 public constant INDEX_ID = 0;
 
+    // Contracts
+    DuchLiquidator liquidator;
+
     // Events ------------------------------------
     event Bid(address indexed bidder, UD60x18 amount);
     event AuctionSettled(UD60x18 iRatePerSecond, UD60x18 maturityLoanValue);
@@ -48,6 +52,8 @@ contract DuchLoanAuction is ERC20Burnable {
     event LoanWithdrawn(UD60x18 principal);
     event FullRepayment(address indexed repayer);
     event PartialRepayment(address indexed repayer, UD60x18 indexed amount);
+    event LiquidationStarted();
+    event LiquidationEnded(UD60x18 finalPayout);
 
     // Constructor -------------------------------
     constructor(
@@ -88,7 +94,6 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     // External functions ----------------------
-
     function bid(UD60x18 amount) external {
         require(
             block.timestamp > auctionStartTime,
@@ -189,6 +194,29 @@ contract DuchLoanAuction is ERC20Burnable {
             }
             emit PartialRepayment(msg.sender, amount);
         }
+    }
+
+    function liquidateCollateral() external {
+        require(auctionSettled, "Auction not settled");
+        require(block.timestamp > loanEndTime, "Loan still active");
+        require(unwrap(debt) > 0, "Debt has been paid off");
+
+        liquidator = new DuchLiquidator(
+            nftCollateralAddress,
+            nftCollateralTokenId,
+            principal.mul(wrap(2)),
+            denominatedToken
+        );
+
+        emit LiquidationStarted();
+    }
+
+    function payoutLiquidation() external {
+        require(msg.sender == address(liquidator), "Only liquidator");
+        UD60x18 finalPayout = wrap(denominatedToken.balanceOf(address(this)));
+        distribute();
+
+        emit LiquidationEnded(finalPayout);
     }
 
     // Public functions ----------------------------
