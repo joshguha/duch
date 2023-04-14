@@ -39,4 +39,25 @@ contract DuchLiquidator {
 
         activeLoanAuction = DuchLoanAuction(msg.sender);
     }
+
+    function getPrice() public view returns (UD60x18) {
+        // Zero price if after auction end, though this should theoretically never happen
+        if (block.timestamp > endTime) return wrap(0);
+        uint256 timeRemaining = endTime - block.timestamp;
+        // Dutch auction, linear decrease in price over time
+        return
+            toUD60x18(timeRemaining).div(toUD60x18(endTime)).mul(startingPrice);
+    }
+
+    function buy() external {
+        UD60x18 price = getPrice();
+
+        denominatedToken.transferFrom(
+            msg.sender,
+            address(activeLoanAuction),
+            unwrap(price)
+        );
+
+        selfdestruct(payable(msg.sender)); // Shouldn't hold ETH
+    }
 }
