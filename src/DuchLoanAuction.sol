@@ -23,7 +23,7 @@ contract DuchLoanAuction is ERC20Burnable {
 
     // During auction phase this variable is the upper bound (max interest rate).
     // During loan phase, this is the actual interest rate
-    UD60x18 public iRatePerSecond;
+    UD60x18 public maxIRatePerSecond;
 
     // During auction phase, this represents amount of debt raised from bidders
     // During loan phase, this represents maturity value of loan (principal + interest)
@@ -46,7 +46,7 @@ contract DuchLoanAuction is ERC20Burnable {
         uint256 _auctionStartTime,
         uint256 _auctionDuration,
         UD60x18 _principal,
-        UD60x18 _iRatePerSecond,
+        UD60x18 _maxIRatePerSecond,
         uint256 _loanTerm,
         ISuperToken _denominatedToken,
         address _debtor
@@ -61,7 +61,7 @@ contract DuchLoanAuction is ERC20Burnable {
         auctionStartTime = _auctionStartTime;
         auctionDuration = _auctionDuration;
         principal = _principal;
-        iRatePerSecond = _iRatePerSecond;
+        maxIRatePerSecond = _maxIRatePerSecond;
         loanTerm = _loanTerm;
         denominatedToken = _denominatedToken;
         debtor = _debtor;
@@ -101,7 +101,7 @@ contract DuchLoanAuction is ERC20Burnable {
                 address(this),
                 unwrap(principal.sub(debt))
             );
-            // settleAuction();
+            settleAuction();
         } else {
             denominatedToken.transferFrom(
                 msg.sender,
@@ -171,6 +171,16 @@ contract DuchLoanAuction is ERC20Burnable {
         }
     }
 
+    // Public functions ----------------------------
+    function getCurrentInterestRate() public view returns (UD60x18) {
+        require(!auctionSettled, "Auction has been settled");
+        UD60x18 k = maxIRatePerSecond.div(toUD60x18(auctionDuration).sqrt());
+        uint256 auctionTimeElapsed = block.timestamp - auctionStartTime;
+        UD60x18 iRatePerSecond = k.mul(toUD60x18(auctionTimeElapsed).sqrt());
+
+        return iRatePerSecond;
+    }
+
     // Internal functions ----------------------------
     /// @notice Takes the entire balance of the designated spreaderToken in the contract and distributes it out to unit holders w/ IDA
     function distribute() public {
@@ -182,12 +192,10 @@ contract DuchLoanAuction is ERC20Burnable {
         denominatedToken.distribute(INDEX_ID, actualDistributionAmount);
     }
 
-    function settleLoan() internal {
+    function settleAuction() internal {
+        UD60x18 iRatePerSecond = getCurrentInterestRate();
         auctionSettled = true;
         loanEndTime = block.timestamp + loanTerm;
-        UD60x18 k = iRatePerSecond.div(toUD60x18(auctionDuration).sqrt()); // iRatePerSecond is max interest rate
-        uint256 auctionTimeElapsed = block.timestamp - auctionStartTime;
-        iRatePerSecond = k.mul(toUD60x18(auctionTimeElapsed).sqrt()); // iRatePerSecond set to actual interest rate for loan
-        debt = principal.add(iRatePerSecond.mul(loanTerm)); // Debt set to maturity loan value (principal + interest)
+        debt = principal.add(iRatePerSecond.mul(toUD60x18(loanTerm))); // Debt set to maturity loan value (principal + interest)
     }
 }
