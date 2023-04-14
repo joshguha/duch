@@ -10,6 +10,7 @@ import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contra
 contract DuchLoanAuction is ERC20Burnable {
     /// @notice SuperToken Library
     using SuperTokenV1Library for ISuperToken;
+
     // State ------------------------------------------
     // Collateral
     address nftCollateralAddress;
