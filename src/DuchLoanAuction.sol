@@ -7,6 +7,7 @@ import {UD60x18, unwrap, wrap, toUD60x18} from "@prb/math/UD60x18.sol";
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import "./DuchLiquidator.sol";
+import "./libraries/Errors.sol";
 
 contract DuchLoanAuction is ERC20Burnable {
     /// @notice SuperToken Library
@@ -23,10 +24,7 @@ contract DuchLoanAuction is ERC20Burnable {
     uint256 public immutable auctionStartTime;
     uint256 public immutable auctionDuration;
     UD60x18 public immutable principal;
-
-    // During auction phase this variable is the upper bound (max interest rate).
-    // During loan phase, this is the actual interest rate
-    UD60x18 public maxIRatePerSecond;
+    UD60x18 public immutable maxIRatePerSecond;
 
     // During auction phase, this represents amount of debt raised from bidders
     // During loan phase, this represents maturity value of loan (principal + interest)
@@ -60,17 +58,17 @@ contract DuchLoanAuction is ERC20Burnable {
     // Modifiers
 
     modifier onlyAuctionPhase() {
-        require(state == State.AuctionPhase, "Not Auction Phase");
+        require(state == State.AuctionPhase, Errors.ONLY_AUCTION_PHASE);
         _;
     }
 
     modifier onlyLoanPhase() {
-        require(state == State.LoanPhase, "Not Loan Phase");
+        require(state == State.LoanPhase, Errors.ONLY_LOAN_PHASE);
         _;
     }
 
     modifier onlyLiquidationPhase() {
-        require(state == State.LiquidationPhase, "Not Liquidation Phase");
+        require(state == State.LiquidationPhase, Errors.ONLY_LIQUIDATION_PHASE);
         _;
     }
 
@@ -98,7 +96,7 @@ contract DuchLoanAuction is ERC20Burnable {
     ) ERC20("Duch Loan Auction", "DLA") {
         require(
             _auctionStartTime > block.timestamp,
-            "Auction cannot start in the past"
+            Errors.AUCTION_CANNOT_START_IN_PAST
         );
 
         nftCollateralAddress = _nftCollateralAddress;
@@ -126,15 +124,15 @@ contract DuchLoanAuction is ERC20Burnable {
     function bid(UD60x18 amount) external onlyAuctionPhase {
         require(
             block.timestamp > auctionStartTime,
-            "Auction has not started yet"
+            Errors.AUCTION_HAS_NOT_STARTED
         );
         require(
             block.timestamp < auctionStartTime + auctionDuration,
-            "Auction has ended"
+            Errors.AUCTION_HAS_ENDED
         );
         require(
             unwrap(amount) < unwrap(principal.sub(debt)),
-            "Excessive bid amount"
+            Errors.EXCESSIVE_BID_AMOUNT
         );
 
         // Bid zero to complete the loan
@@ -165,7 +163,7 @@ contract DuchLoanAuction is ERC20Burnable {
     function collectFromUnsuccessfulAuction() external onlyAuctionPhase {
         require(
             block.timestamp > auctionStartTime + auctionDuration,
-            "Auction still active"
+            Errors.AUCTION_STILL_ACTIVE
         );
         distribute();
         state = State.AuctionUnsuccessful;
@@ -174,7 +172,7 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     function endLoan() external onlyLoanPhase {
-        require(block.timestamp > loanEndTime, "Loan still active");
+        require(block.timestamp > loanEndTime, Errors.LOAN_STILL_ACTIVE);
 
         uint256 balance = denominatedToken.balanceOf(address(this));
 
@@ -195,7 +193,7 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     function payoutLiquidation() external onlyLiquidationPhase {
-        require(msg.sender == address(liquidator), "Only liquidator");
+        require(msg.sender == address(liquidator), Errors.ONLY_LIQUIDATOR);
         UD60x18 finalPayout = wrap(denominatedToken.balanceOf(address(this)));
         distribute();
         state = State.LiquidationPaid;
