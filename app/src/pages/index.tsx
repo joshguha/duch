@@ -4,13 +4,16 @@ import { useContext, useState, useEffect, useRef } from "react";
 import { NavigationContext } from "@/contexts/Navigation";
 import Auctions from "@/components/Auctions";
 import AuctionDetails from "@/components/AuctionDetails";
+import { russo } from "@/styles/fonts";
 
 export default function Home() {
-  const { location } = useContext(NavigationContext);
+  const { location, setLocation } = useContext(NavigationContext);
   const [localLocation, setLocalLocation] = useState(location);
   const [fadeOut, setFadeOut] = useState(false);
 
   const prevLocation = useRef(location);
+
+  const setLocationNewLoanAuction = () => setLocation("newLoanAuction");
 
   useEffect(() => {
     if (prevLocation.current !== location) {
@@ -27,7 +30,13 @@ export default function Home() {
     <div className="flex">
       <Sidebar />
       <div className="h-screen flex flex-col flex-1 bg-dark p-10 py-12 transition ">
-        <div className="flex justify-end mb-10">
+        <div className="flex justify-between mb-10">
+          <button
+            className={`bg-green rounded-xl p-10 py-3 ${russo.variable} font-heading text-dark hover:scale-105 transition`}
+            onClick={setLocationNewLoanAuction}
+          >
+            Create a Loan Auction
+          </button>
           <ConnectButton />
         </div>
         <div

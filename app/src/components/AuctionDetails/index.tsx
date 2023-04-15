@@ -4,6 +4,7 @@ import { NavigationContext } from "@/contexts/Navigation";
 
 import { useAuctionDetails } from "@/hooks/useAuctionDetails";
 import { useContext } from "react";
+import { russo } from "@/styles/fonts";
 import Loader from "../Loader";
 
 const AuctionDetails = () => {
@@ -27,9 +28,13 @@ const AuctionDetails = () => {
           <div className="w-1/2 flex flex-col justify-center">
             {/* Collateral details */}
             <div className="mb-5">
-              <p className="text-4xl mb-5">Auction Details</p>
+              <p className={`text-4xl mb-5 ${russo.variable} font-heading`}>
+                Auction Details
+              </p>
               <div className="flex items-end space-x-4">
-                <p className="text-2xl">Bored Apes Yacht Club</p>
+                <p className={`text-2xl ${russo.variable} font-heading`}>
+                  Bored Apes Yacht Club
+                </p>
                 <p className="text-xl text-green">#1242</p>
               </div>
             </div>
@@ -68,13 +73,21 @@ const AuctionDetails = () => {
               <div className="mb-5 w-1/2">
                 <div className="mb-5">
                   <p className="text-3xl">12.24%</p>
-                  <p className="text-xl text-green">Current APY</p>
+                  <p className="text-xl text-green">Current APR</p>
                 </div>
                 <div>
                   <p className="text-l">20.24%</p>
-                  <p>Max APY</p>
+                  <p>Max APR</p>
                 </div>
               </div>
+            </div>
+            {/* User Accept Button */}
+            <div className="flex space-x-12 my-5 mt-10 items-center">
+              <button
+                className={`bg-green rounded-xl p-10 py-3 ${russo.variable} font-heading text-dark hover:scale-105 transition w-48 m-auto`}
+              >
+                Accept Loan
+              </button>
             </div>
           </div>
         </div>

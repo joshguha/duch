@@ -2,6 +2,7 @@ import { Rubik_Spray_Paint } from "next/font/google";
 import { russo } from "@/styles/fonts";
 import { useContext } from "react";
 import { NavigationContext } from "@/contexts/Navigation";
+import Bids from "./Bids";
 
 const rubik = Rubik_Spray_Paint({ weight: "400", subsets: ["latin"] });
 
@@ -46,21 +47,26 @@ const Sidebar = () => {
           Active loans
         </p>
       </div>
-      <div className="my-10 px-8">
-        {(location === "auctions" || location === "activeLoans") && (
-          <h1 className={`${russo.variable} font-heading text-3xl text-center`}>
-            Select an {location == "auctions" ? "auction" : "active loan"}
-          </h1>
-        )}
-      </div>
-      <div className="flex-1"></div>
-      <div className="p-8 flex justify-center">
-        <button
-          className={`bg-green rounded-xl p-10 py-3 ${russo.variable} font-heading text-dark hover:scale-105 transition`}
-          onClick={setLocationNewLoanAuction}
-        >
-          Create a Loan Auction
-        </button>
+      <div className="flex flex-col flex-1 px-8">
+        {
+          {
+            auctions: (
+              <h1
+                className={`${russo.variable} font-heading text-3xl text-center`}
+              >
+                Select an auction
+              </h1>
+            ),
+            activeLoans: (
+              <h1
+                className={`${russo.variable} font-heading text-3xl text-center`}
+              >
+                Select an active loan
+              </h1>
+            ),
+            auctionDetails: <Bids />,
+          }[location]
+        }
       </div>
     </div>
   );
