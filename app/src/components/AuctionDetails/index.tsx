@@ -28,7 +28,7 @@ const AuctionDetails = () => {
       selectedAuction.auctionStartTime
         .add(selectedAuction.auctionDuration)
         .toNumber() * 1000,
-      20
+      convertInterestPerSecondToAPR(selectedAuction.maxIRatePerSecond) * 100
     );
     constructGraph(graph, [width, height], data);
   }, [width, height]);
