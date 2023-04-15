@@ -64,7 +64,6 @@ contract DuchLoanAuction is ERC20Burnable {
     event LoanStarted(
         UD60x18 iRatePerSecond,
         UD60x18 principal,
-        UD60x18 totalInterest,
         UD60x18 maturityLoanValue
     );
     event LoanPaid();
@@ -298,13 +297,12 @@ contract DuchLoanAuction is ERC20Burnable {
         UD60x18 iRatePerSecond = getCurrentInterestRate();
         state = State.LoanPhase;
         loanEndTime = block.timestamp + loanTerm;
-        UD60x18 totalInterest = iRatePerSecond.mul(toUD60x18(loanTerm));
-        debt = principal.add(totalInterest); // Debt set to maturity loan value (principal + interest)
-
+        UD60x18 multiplier = toUD60x18(1).add(iRatePerSecond);
+        debt = principal.mul(multiplier.pow(toUD60x18(loanTerm)));
         // Send debtor the loan
         denominatedToken.transfer(debtor, unwrap(principal));
 
-        emit LoanStarted(iRatePerSecond, principal, totalInterest, debt);
+        emit LoanStarted(iRatePerSecond, principal, debt);
     }
 
     /**
