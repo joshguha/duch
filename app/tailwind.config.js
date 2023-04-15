@@ -20,9 +20,22 @@ module.exports = {
       dark: "#010501",
       light: "#ebebeb",
       offWhite: "#eaede8",
+      offBlack: {
+        10: "rgb(var(--color-dark-overlay) / 0.08)",
+      },
     },
     fontFamily: {
-      sans: ["var(--font-russo)", fontFamily.sans],
+      sans: [fontFamily.sans],
+      heading: ["var(--font-russo)", fontFamily.sans],
+    },
+    keyframes: {
+      fadeInUp: {
+        "0%, 100%": { transform: "translateY(10px)", opacity: "0" },
+        "100%": { transform: "translateY(0)", opacity: "1" },
+      },
+    },
+    animation: {
+      fadeIn: "fadeInUp 1s ease-in-out 1",
     },
   },
   plugins: [],
