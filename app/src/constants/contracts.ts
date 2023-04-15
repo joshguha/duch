@@ -23,11 +23,11 @@ function constantContracts<T extends { [key in string]: AppContractInfo }>(
 export const contracts = constantContracts({
   DUCH_COORDINATOR: {
     address: {
-      [polygon.id]: "0x0ba0289796A4B704089E8ba371aB9e9179F256D9",
+      [polygon.id]: "0x1f9e4eB6f1e4ecc432CF70941401550357c579Ae",
     },
     abi: duchCoordinatorABI,
     firstBlock: {
-      [polygon.id]: 41560951,
+      [polygon.id]: 41563440,
     },
   },
 });

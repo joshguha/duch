@@ -15,13 +15,13 @@ import img4 from "../../public/fakeApes/4.jpg";
 import img5 from "../../public/fakeApes/5.jpg";
 import img6 from "../../public/fakeApes/6.jpg";
 
-const images = [img1, img2, img3, img4, img5, img6];
+export const images = [img1, img2, img3, img4, img5, img6];
 
 const AuctionProfile = ({ auction }: { auction: Auction }) => {
   const { setLocation, setSelectedAuction } = useContext(NavigationContext);
 
   const onClick = () => {
-    setSelectedAuction("1");
+    setSelectedAuction(auction);
     setLocation("auctionDetails");
   };
 

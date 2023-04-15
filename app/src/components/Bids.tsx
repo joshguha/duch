@@ -17,8 +17,8 @@ const Bids = () => {
       <p className={`text-xl ${russo.variable} font-heading`}>Your bids</p>
       <div>
         {bids.userBids.length ? (
-          bids.userBids.map(({ amount, timestamp }) => (
-            <div className="flex justify-between items-end my-5">
+          bids.userBids.map(({ amount, timestamp }, index) => (
+            <div key={index} className="flex justify-between items-end my-5">
               <p>{timestamp}</p>
               <div>
                 <p className="text-xl">{amount}</p>

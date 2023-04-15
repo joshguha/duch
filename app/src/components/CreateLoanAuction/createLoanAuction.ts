@@ -30,6 +30,10 @@ export async function createLoanAuction(
 
     const nft = new ethers.Contract(nftCollateralAddress, erc721ABI, signer);
 
+    const isApproved =
+      (await nft.getApproved(nftTokenId)).toLowerCase() ===
+      contracts.DUCH_COORDINATOR.address[chainId as ChainsValue].toLowerCase();
+
     const auctionStartTime = moment(
       startTime + " " + startDate,
       "HH:mm:ss MM/DD/YYYY"
@@ -54,24 +58,38 @@ export async function createLoanAuction(
       .sub(WeiPerEther)
       .toString();
 
-    const tx = await nft.approve(
-      contracts.DUCH_COORDINATOR.address[chainId as ChainsValue],
-      nftTokenId
-    );
-
-    await tx.wait();
-
-    await coordinator.createLoanAuction(
-      nftCollateralAddress,
-      nftTokenId,
-      auctionStartTime,
-      auctionDuration,
-      principal,
-      maxPerSecondInterestRate,
-      loanTerm,
-      denominatedTokenAddress,
-      userAddress
-    );
+    if (!isApproved) {
+      const tx = await nft.approve(
+        contracts.DUCH_COORDINATOR.address[chainId as ChainsValue],
+        nftTokenId
+      );
+    } else {
+      try {
+        await coordinator.createLoanAuction(
+          nftCollateralAddress,
+          nftTokenId,
+          auctionStartTime,
+          auctionDuration,
+          principal,
+          maxPerSecondInterestRate,
+          loanTerm,
+          denominatedTokenAddress,
+          userAddress
+        );
+      } catch (e) {
+        await coordinator.createLoanAuction(
+          nftCollateralAddress,
+          nftTokenId,
+          auctionStartTime,
+          auctionDuration,
+          principal,
+          maxPerSecondInterestRate,
+          loanTerm,
+          denominatedTokenAddress,
+          userAddress
+        );
+      }
+    }
   } catch (e) {
     console.error(e);
   }

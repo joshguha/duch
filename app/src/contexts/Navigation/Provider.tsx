@@ -1,13 +1,14 @@
+import { Auction } from "@/hooks/useAuctions";
 import { ReactNode, useState, useEffect } from "react";
 import Context from "./Context";
 
 const Provider = ({ children }: { children: ReactNode }) => {
   const [location, setLocation] = useState("auctions");
-  const [selectedAuction, setSelectedAuction] = useState("");
+  const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null);
   const [selectedActiveLoan, setSelectedActiveLoan] = useState("");
 
   useEffect(() => {
-    if (location !== "auctionDetails") setSelectedAuction("");
+    if (location !== "auctionDetails") setSelectedAuction(null);
     if (location !== "activeLoanDetails") setSelectedActiveLoan("");
   }, [location]);
 

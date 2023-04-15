@@ -13,11 +13,11 @@ const CreateLoanAuction = () => {
   );
   const [nftTokenId, setNFTTokenId] = useState("");
   const [startDate, setStartDate] = useState("04/15/2023");
-  const [startTime, setStartTime] = useState("23:00:00");
+  const [startTime, setStartTime] = useState("23:45:00");
   const [auctionDuration, setAuctionDuration] = useState("1");
   const [principal, setPrincipal] = useState("2");
   const [maxAPR, setMaxAPR] = useState("");
-  const [loanTerm, setLoanTerm] = useState("7776000");
+  const [loanTerm, setLoanTerm] = useState("90");
   const [denominatedTokenAddress, setDenominatedTokenAddress] = useState(
     "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
   );

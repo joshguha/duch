@@ -1,28 +1,33 @@
 import { GiCash } from "react-icons/gi";
 import { AiOutlineClockCircle } from "react-icons/ai";
 import { NavigationContext } from "@/contexts/Navigation";
-
-import { useAuctionDetails } from "@/hooks/useAuctionDetails";
+import { WeiPerEther } from "@ethersproject/constants";
 import { useContext } from "react";
 import { russo } from "@/styles/fonts";
 import Loader from "../Loader";
+import { images } from "../AuctionProfile";
+import { formatFixed } from "@ethersproject/bignumber";
+import { formatTimestamp } from "@/utils/formatTimestamp";
+import { convertSecondsToDays } from "@/utils/convertSecondsToDays";
+import { convertInterestPerSecondToAPR } from "@/utils/convertInterestPerSecondToAPR";
 
 const AuctionDetails = () => {
   const { selectedAuction } = useContext(NavigationContext);
-  const { auctionDetails, loading } = useAuctionDetails(selectedAuction);
-
   return (
     <div className="flex flex-1 justify-center items-center animate-fadeIn">
-      {loading || !auctionDetails ? (
+      {!selectedAuction ? (
         <Loader />
       ) : (
         <div className="animate-fadeIn flex flex-1">
           <div className="w-1/2 flex justify-center items-center">
             <img
-              src={auctionDetails.img}
+              src={
+                images[selectedAuction?.nftCollateralTokenId.toNumber() % 6].src
+              }
               alt="Collateral NFT Image"
               width="500"
               height="500"
+              style={{ borderRadius: "20px" }}
             />
           </div>
           <div className="w-1/2 flex flex-col justify-center">
@@ -33,9 +38,11 @@ const AuctionDetails = () => {
               </p>
               <div className="flex items-end space-x-4">
                 <p className={`text-2xl ${russo.variable} font-heading`}>
-                  Bored Apes Yacht Club
+                  {selectedAuction.collectionName}
                 </p>
-                <p className="text-xl text-green">#1242</p>
+                <p className="text-xl text-green">
+                  #{selectedAuction.nftCollateralTokenId.toString()}
+                </p>
               </div>
             </div>
 
@@ -43,15 +50,32 @@ const AuctionDetails = () => {
             <div className="flex space-x-12 my-5 items-center">
               <GiCash fontSize={50} />
               <div>
-                <p className="mb-2 text-2xl">1,242.12 USDCx</p>
+                <p className="mb-2 text-2xl">
+                  {formatFixed(selectedAuction.debtRaised, 18)}{" "}
+                  {selectedAuction.denominatedTokenName}
+                </p>
                 <p>Debt raised</p>
               </div>
               <div>
-                <p className="mb-2 text-2xl">62% of max</p>
-                <p>(2,122.12 USDCx)</p>
+                <p className="mb-2 text-2xl">
+                  {formatFixed(
+                    selectedAuction.debtRaised
+                      .mul(WeiPerEther)
+                      .div(selectedAuction.principal),
+                    16
+                  )}
+                  % of max
+                </p>
+                <p>
+                  ({formatFixed(selectedAuction.principal, 18)}{" "}
+                  {selectedAuction.denominatedTokenName})
+                </p>
               </div>
               <div>
-                <p className="mb-2 text-2xl">90 days</p>
+                <p className="mb-2 text-2xl">
+                  {" "}
+                  {convertSecondsToDays(selectedAuction.loanTerm)} day(s)
+                </p>
                 <p>Loan Term</p>
               </div>
             </div>
@@ -59,11 +83,19 @@ const AuctionDetails = () => {
             <div className="flex space-x-12 my-5">
               <AiOutlineClockCircle fontSize={50} />
               <div className="mb-5">
-                <p className="mb-2 text-l">10th April 2022, 21:00</p>
+                <p className="mb-2 text-l">
+                  {formatTimestamp(selectedAuction.auctionStartTime)}
+                </p>
                 <p>Auction started</p>
               </div>
               <div className="mb-5">
-                <p className="mb-2 text-l">10th May 2022, 12:00</p>
+                <p className="mb-2 text-l">
+                  {formatTimestamp(
+                    selectedAuction.auctionStartTime.add(
+                      selectedAuction.auctionDuration
+                    )
+                  )}
+                </p>
                 <p>Auction expires</p>
               </div>
             </div>
@@ -72,11 +104,26 @@ const AuctionDetails = () => {
               <div className="mb-5 w-1/2">Graph</div>
               <div className="mb-5 w-1/2">
                 <div className="mb-5">
-                  <p className="text-3xl">12.24%</p>
+                  <p className="text-3xl">
+                    {(
+                      convertInterestPerSecondToAPR(
+                        selectedAuction.currentIRate
+                      ) * 100
+                    ).toFixed(2)}
+                    %
+                  </p>
                   <p className="text-xl text-green">Current APR</p>
                 </div>
                 <div>
-                  <p className="text-l">20.24%</p>
+                  <p className="text-l">
+                    {" "}
+                    {(
+                      convertInterestPerSecondToAPR(
+                        selectedAuction.maxIRatePerSecond
+                      ) * 100
+                    ).toFixed(2)}
+                    %
+                  </p>
                   <p>Max APR</p>
                 </div>
               </div>
