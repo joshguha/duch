@@ -40,13 +40,16 @@ const ActiveLoanDetails = () => {
             </div>
 
             {/* Active Loan timing */}
-            <div className="flex space-x-12 my-5">
-              <AiOutlineClockCircle fontSize={50} />
-              <div className="mb-5">
+            <div className="flex space-x-12 my-5 items-center">
+              <div>
+                <p className="mb-2 text-3xl text-green">90 days</p>
+                <p>Term</p>
+              </div>
+              <div>
                 <p className="mb-2 text-l">10th April 2022, 21:00</p>
                 <p>Loan started</p>
               </div>
-              <div className="mb-5">
+              <div>
                 <p className="mb-2 text-l">10th May 2022, 12:00</p>
                 <p>Loan matures</p>
               </div>
@@ -55,7 +58,7 @@ const ActiveLoanDetails = () => {
             {/* Loan value */}
             <div className="my-5">
               <p className={`text-4xl mb-2 text-green`}>1,242.12 USDCx</p>
-              <p className="text-xl">Debt raised</p>
+              <p className="text-xl">Maturity loan value</p>
             </div>
 
             {/* Composition */}
@@ -70,7 +73,7 @@ const ActiveLoanDetails = () => {
               </div>
             </div>
 
-            {/* Composition */}
+            {/* Other stats */}
             <div className="flex space-x-12 my-5 items-center">
               <div>
                 <p className={`text-4xl mb-2 text-green`}>12%</p>

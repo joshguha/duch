@@ -16,13 +16,17 @@ module.exports = {
       },
     },
     colors: {
-      green: "#17ff49",
+      green: {
+        DEFAULT: "#17ff49",
+        100: "#13a83d",
+      },
       dark: "#010501",
       white: "#ebebeb",
       offWhite: "#eaede8",
       offBlack: {
         10: "rgb(var(--color-dark-overlay) / 0.08)",
       },
+      red: { DEFAULT: "#fa1100", 100: "#b00017" },
     },
     fontFamily: {
       sans: [fontFamily.sans],

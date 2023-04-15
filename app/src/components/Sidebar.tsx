@@ -3,6 +3,7 @@ import { russo } from "@/styles/fonts";
 import { useContext } from "react";
 import { NavigationContext } from "@/contexts/Navigation";
 import Bids from "./Bids";
+import Shares from "./Shares";
 
 const rubik = Rubik_Spray_Paint({ weight: "400", subsets: ["latin"] });
 
@@ -11,11 +12,11 @@ const Sidebar = () => {
 
   const isAuctionsLocation =
     location === "auctions" || location === "auctionDetails";
-  const isActiveLoansLocation = location === "activeLoans";
+  const isActiveLoansLocation =
+    location === "activeLoans" || location === "activeLoanDetails";
 
   const setLocationAuctions = () => setLocation("auctions");
   const setLocationActiveLoans = () => setLocation("activeLoans");
-  const setLocationNewLoanAuction = () => setLocation("newLoanAuction");
 
   return (
     <div className="flex flex-col w-96 bg-white text-dark h-screen border-r-2 border-offWhite">
@@ -65,6 +66,7 @@ const Sidebar = () => {
               </h1>
             ),
             auctionDetails: <Bids />,
+            activeLoanDetails: <Shares />,
           }[location]
         }
       </div>
