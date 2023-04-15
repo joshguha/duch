@@ -47,7 +47,7 @@ contract DuchCoordinator {
      * @param principal Desired principal of loan
      * @param maxIRatePerSecond Maximum interest rate per second which the borrower is willing to pay
      * @param loanTerm Duration of the loan in seconds
-     * @param denominatedToken Address of the SuperToken which denominates the loan
+     * @param denominatedToken Address of the ERC20 which denominates the loan
      * @param debtor Address of the debtor: receives the loan / collateral upon repayment of loan
      */
     function createLoanAuction(
@@ -60,16 +60,9 @@ contract DuchCoordinator {
         uint256 loanTerm,
         address denominatedToken,
         address debtor
-    ) external {
-        // Escrow NFT collateral
-        IERC721(nftCollateralAddress).transferFrom(
-            msg.sender,
-            address(this),
-            nftCollateralTokenId
-        );
-
+    ) external returns (DuchLoanAuction loanAuction) {
         // Create LoanAuction
-        DuchLoanAuction loanAuction = new DuchLoanAuction(
+        loanAuction = new DuchLoanAuction(
             nftCollateralAddress,
             nftCollateralTokenId,
             auctionStartTime,
@@ -77,8 +70,15 @@ contract DuchCoordinator {
             principal,
             maxIRatePerSecond,
             loanTerm,
-            ISuperToken(denominatedToken),
+            IERC20(denominatedToken),
             debtor
+        );
+
+        // Escrow NFT collateral
+        IERC721(nftCollateralAddress).transferFrom(
+            msg.sender,
+            address(this),
+            nftCollateralTokenId
         );
 
         activeLoans[nftCollateralAddress][nftCollateralTokenId] = loanAuction;

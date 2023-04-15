@@ -3,11 +3,11 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {UD60x18, unwrap, wrap, toUD60x18} from "@prb/math/UD60x18.sol";
-import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
-import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import "./DuchLiquidator.sol";
 import "./DuchCoordinator.sol";
 import "./libraries/Errors.sol";
+
+import "forge-std/Test.sol";
 
 /**
  * @title DuchLoanAuction: NFT-collateralized lending
@@ -20,14 +20,10 @@ import "./libraries/Errors.sol";
  *         present lending income decreases over time
  * @notice This project was inspired by a podcast on NFT auctions by a16z
  *         https://web3-with-a16z.simplecast.com/episodes/auction-design-mechanisms-incentives-choices-tradeoffs
- * @dev Built using Superfluid IDAs for loan repayment
- * @dev The loan is denominated and paid in a Superfluid SuperToken
+ * @dev The loan is denominated and paid in an ERC20
  */
 
-contract DuchLoanAuction is ERC20Burnable {
-    /// @notice SuperToken Library
-    using SuperTokenV1Library for ISuperToken;
-
+contract DuchLoanAuction is ERC20Burnable, Test {
     // State ------------------------------------------
     // Collateral
     address nftCollateralAddress;
@@ -47,12 +43,9 @@ contract DuchLoanAuction is ERC20Burnable {
 
     // Loan
     uint256 public immutable loanTerm;
-    ISuperToken public immutable denominatedToken;
+    IERC20 public immutable denominatedToken;
     address public immutable debtor;
     uint256 loanEndTime;
-
-    /// @notice SuperToken Library
-    uint32 public constant INDEX_ID = 0;
 
     // Contracts
     DuchLiquidator liquidator;
@@ -106,7 +99,7 @@ contract DuchLoanAuction is ERC20Burnable {
      * @param _principal Desired principal of loan
      * @param _maxIRatePerSecond Maximum interest rate per second which the borrower is willing to pay
      * @param _loanTerm Duration of the loan in seconds
-     * @param _denominatedToken Address of the SuperToken which denominates the loan
+     * @param _denominatedToken Address of the ERC20 which denominates the loan
      * @param _debtor Address of the debtor: receives the loan / collateral upon repayment of loan
      */
     constructor(
@@ -117,7 +110,7 @@ contract DuchLoanAuction is ERC20Burnable {
         UD60x18 _principal,
         UD60x18 _maxIRatePerSecond,
         uint256 _loanTerm,
-        ISuperToken _denominatedToken,
+        IERC20 _denominatedToken,
         address _debtor
     ) ERC20("Duch Loan Auction", "DLA") {
         require(
@@ -138,9 +131,6 @@ contract DuchLoanAuction is ERC20Burnable {
 
         // Calculate k (see getCurrentInterestRate below)
         k = _maxIRatePerSecond.div(toUD60x18(auctionDuration).sqrt());
-
-        // Creates the IDA Index through which tokens will be distributed
-        _denominatedToken.createIndex(INDEX_ID);
     }
 
     /**
@@ -196,7 +186,6 @@ contract DuchLoanAuction is ERC20Burnable {
             block.timestamp > auctionStartTime + auctionDuration,
             Errors.AUCTION_STILL_ACTIVE
         );
-        distribute();
         coordinator.endLoanAuction(
             nftCollateralAddress,
             nftCollateralTokenId,
@@ -218,7 +207,6 @@ contract DuchLoanAuction is ERC20Burnable {
         uint256 balance = denominatedToken.balanceOf(address(this));
 
         if (balance >= unwrap(debt)) {
-            distribute();
             state = State.LoanPaid;
             coordinator.endLoanAuction(
                 nftCollateralAddress,
@@ -249,7 +237,6 @@ contract DuchLoanAuction is ERC20Burnable {
         UD60x18 liquidationValue
     ) external onlyLiquidationPhase {
         require(msg.sender == address(liquidator), Errors.ONLY_LIQUIDATOR);
-        distribute();
         state = State.LiquidationPaid;
         coordinator.endLoanAuction(
             nftCollateralAddress,
@@ -283,8 +270,7 @@ contract DuchLoanAuction is ERC20Burnable {
         onlyAuctionPhase
         returns (UD60x18)
     {
-        if (block.timestamp < auctionStartTime)
-            return k.mul(toUD60x18(auctionDuration).sqrt());
+        if (block.timestamp < auctionStartTime) return wrap(0);
 
         uint256 auctionTimeElapsed = block.timestamp - auctionStartTime;
         UD60x18 iRatePerSecond = k.mul(toUD60x18(auctionTimeElapsed).sqrt());
@@ -309,53 +295,22 @@ contract DuchLoanAuction is ERC20Burnable {
     }
 
     /**
-     * @notice Takes the entire balance of the designated denominated token
-     * in the contract and distributes it out to unit holders w/ IDA
+     * @notice Allows users to claim their share of the loan repayment
      */
-    function distribute() public {
-        uint256 balance = denominatedToken.balanceOf(address(this));
-
-        (uint256 actualDistributionAmount, ) = denominatedToken
-            .calculateDistribution(address(this), INDEX_ID, balance);
-
-        denominatedToken.distribute(INDEX_ID, actualDistributionAmount);
-    }
-
-    /**
-     * @notice Hook to transfer IDA subscription units along with the ERC20 tokens
-     * @dev Overrides Openzeppelin's implementation of ERC20 _afterTokenTransfer
-     */
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override {
-        if (from != address(0)) {
-            (, , uint256 currentUnitsHeld, ) = denominatedToken.getSubscription(
-                address(this),
-                INDEX_ID,
-                from
-            );
-
-            denominatedToken.updateSubscriptionUnits(
-                INDEX_ID,
-                from,
-                uint128(currentUnitsHeld - amount)
-            );
-        }
-
-        if (to != address(0)) {
-            (, , uint256 currentUnitsHeld, ) = denominatedToken.getSubscription(
-                address(this),
-                INDEX_ID,
-                to
-            );
-
-            denominatedToken.updateSubscriptionUnits(
-                INDEX_ID,
-                to,
-                uint128(currentUnitsHeld + amount)
-            );
-        }
+    function claimRepayment() internal {
+        require(
+            state == State.AuctionUnsuccessful ||
+                state == State.LoanPaid ||
+                state == State.LiquidationPaid,
+            Errors.UNABLE_TO_CLAIM
+        );
+        uint256 balance = balanceOf(msg.sender);
+        UD60x18 share = wrap(balance).div(wrap(totalSupply()));
+        _burn(msg.sender, balance);
+        uint256 balanceDenominated = denominatedToken.balanceOf(address(this));
+        denominatedToken.transfer(
+            msg.sender,
+            unwrap(wrap(balanceDenominated).mul(share))
+        );
     }
 }
