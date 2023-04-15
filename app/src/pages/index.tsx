@@ -7,6 +7,7 @@ import AuctionDetails from "@/components/AuctionDetails";
 import { russo } from "@/styles/fonts";
 import ActiveLoans from "@/components/ActiveLoans";
 import ActiveLoanDetails from "@/components/ActiveLoans/components/ActiveLoanDetails";
+import CreateLoanAuction from "@/components/CreateLoanAuction";
 
 export default function Home() {
   const { location, setLocation } = useContext(NavigationContext);
@@ -52,6 +53,7 @@ export default function Home() {
               auctionDetails: <AuctionDetails />,
               activeLoans: <ActiveLoans />,
               activeLoanDetails: <ActiveLoanDetails />,
+              newLoanAuction: <CreateLoanAuction />,
             }[localLocation]
           }
         </div>
