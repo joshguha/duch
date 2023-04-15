@@ -13,7 +13,7 @@ import { publicProvider } from "wagmi/providers/public";
 import AllContextsProvider from "@/contexts/AllContextsProvider";
 
 const { chains, provider, webSocketProvider } = configureChains(
-  [mainnet, polygon],
+  [polygon],
   [publicProvider()]
 );
 

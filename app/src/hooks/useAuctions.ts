@@ -1,4 +1,9 @@
-import { useState, useEffect } from "react";
+import { ChainsValue, contracts } from "@/constants/contracts";
+import { scanBlocks } from "@/utils/scanBlocks";
+import { ethers } from "ethers";
+import { useState, useEffect, useRef } from "react";
+import { useProvider, useChainId, useBlockNumber } from "wagmi";
+import useThrottle from "./useThrottle";
 
 export type Auction = {
   img: string;
@@ -9,13 +14,30 @@ export const useAuctions = () => {
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const provider = useProvider();
+  const chainId = useChainId();
+
+  const fetchingData = useRef(false);
+
+  const { throttle } = useThrottle();
+
   useEffect(() => {
     (async function () {
-      const latestAuctions = await fetchAuctions();
+      const pass = await throttle();
+      if (!pass) return;
+
+      if (!chainId || !provider) return;
+
+      const latestAuctions = await fetchAuctions(
+        chainId as ChainsValue,
+        provider,
+        await provider.getBlockNumber()
+      );
+      fetchingData.current = false;
       setAuctions(latestAuctions);
       setLoading(false);
     })();
-  }, []);
+  }, [chainId, provider]);
 
   return {
     auctions,
@@ -25,7 +47,32 @@ export const useAuctions = () => {
 
 // Fetcher
 
-async function fetchAuctions() {
+async function fetchAuctions(
+  chainId: ChainsValue,
+  provider: ethers.providers.BaseProvider,
+  blockNumber: number
+) {
+  const coordinator = new ethers.Contract(
+    contracts.DUCH_COORDINATOR.address[chainId],
+    contracts.DUCH_COORDINATOR.abi,
+    provider
+  );
+
+  const filter = coordinator.filters.LoanAuctionCreated(null, null);
+
+  try {
+    const results = await scanBlocks(
+      coordinator,
+      filter,
+      contracts.DUCH_COORDINATOR.firstBlock[chainId],
+      blockNumber
+    );
+
+    console.log("FINAL", results);
+  } catch (e) {
+    console.error(e);
+  }
+
   await new Promise((res) => setTimeout(res, 1000));
   return [
     {
