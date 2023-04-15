@@ -68,8 +68,8 @@ export async function createLoanAuction(
       principal,
       maxPerSecondInterestRate,
       loanTerm,
-      "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-      "0x4f62ac9936d383289c13524157d95f3ab3eef629",
+      denominatedTokenAddress,
+      userAddress,
       {
         gasLimit: 3000000,
       }
