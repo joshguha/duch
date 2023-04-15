@@ -16,7 +16,7 @@ export async function scanBlocks(
     const result = await contract.queryFilter(
       filter,
       block,
-      block + BLOCK_INTERVAL
+      Math.min(block + BLOCK_INTERVAL, lastBlock)
     );
     console.log(counter);
     counter++;

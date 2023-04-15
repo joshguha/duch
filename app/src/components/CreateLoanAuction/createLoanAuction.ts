@@ -30,14 +30,6 @@ export async function createLoanAuction(
 
     const nft = new ethers.Contract(nftCollateralAddress, erc721ABI, signer);
 
-    await nft.approve(
-      contracts.DUCH_COORDINATOR.address[chainId as ChainsValue],
-      nftTokenId,
-      {
-        gasLimit: 3000000,
-      }
-    );
-
     const auctionStartTime = moment(
       startTime + " " + startDate,
       "HH:mm:ss MM/DD/YYYY"
@@ -58,7 +50,16 @@ export async function createLoanAuction(
     const maxPerSecondInterestRate = parseFixed(
       String(maxPerSecondMultiplier),
       18
-    ).sub(WeiPerEther);
+    )
+      .sub(WeiPerEther)
+      .toString();
+
+    const tx = await nft.approve(
+      contracts.DUCH_COORDINATOR.address[chainId as ChainsValue],
+      nftTokenId
+    );
+
+    await tx.wait();
 
     await coordinator.createLoanAuction(
       nftCollateralAddress,
@@ -69,10 +70,7 @@ export async function createLoanAuction(
       maxPerSecondInterestRate,
       loanTerm,
       denominatedTokenAddress,
-      userAddress,
-      {
-        gasLimit: 3000000,
-      }
+      userAddress
     );
   } catch (e) {
     console.error(e);

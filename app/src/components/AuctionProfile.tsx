@@ -68,7 +68,10 @@ const AuctionProfile = ({ auction }: { auction: Auction }) => {
       <div>
         <p>Current interest rate: </p>
         <p className="text-green">
-          {convertInterestPerSecondToAPR(auction.currentIRate) * 100}% APR
+          {(convertInterestPerSecondToAPR(auction.currentIRate) * 100).toFixed(
+            2
+          )}
+          % APR
         </p>
       </div>
       <div>

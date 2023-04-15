@@ -8,18 +8,21 @@ const CreateLoanAuction = () => {
   const { data: signer } = useSigner();
   const chainId = useChainId();
 
-  const [nftCollateralAddress, setNFTCollateralAddress] = useState("");
+  const [nftCollateralAddress, setNFTCollateralAddress] = useState(
+    "0x8Ef0018A873737977881e252FF16Dc9cCA3746a2"
+  );
   const [nftTokenId, setNFTTokenId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [auctionDuration, setAuctionDuration] = useState("");
-  const [principal, setPrincipal] = useState("");
+  const [startDate, setStartDate] = useState("04/15/2023");
+  const [startTime, setStartTime] = useState("23:00:00");
+  const [auctionDuration, setAuctionDuration] = useState("1");
+  const [principal, setPrincipal] = useState("2");
   const [maxAPR, setMaxAPR] = useState("");
-  const [loanTerm, setLoanTerm] = useState("");
-  const [denominatedTokenAddress, setDenominatedTokenAddress] = useState("");
+  const [loanTerm, setLoanTerm] = useState("7776000");
+  const [denominatedTokenAddress, setDenominatedTokenAddress] = useState(
+    "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+  );
 
   const onClick = () => {
-    console.log("click");
     if (!address || !signer) return;
     createLoanAuction(
       nftCollateralAddress,
