@@ -8,7 +8,8 @@ const rubik = Rubik_Spray_Paint({ weight: "400", subsets: ["latin"] });
 const Sidebar = () => {
   const { location, setLocation } = useContext(NavigationContext);
 
-  const isAuctionsLocation = location === "auctions";
+  const isAuctionsLocation =
+    location === "auctions" || location === "auctionDetails";
   const isActiveLoansLocation = location === "activeLoans";
 
   const setLocationAuctions = () => setLocation("auctions");
@@ -46,9 +47,11 @@ const Sidebar = () => {
         </p>
       </div>
       <div className="my-10 px-8">
-        <h1 className={`${russo.variable} font-heading text-3xl text-center`}>
-          Select an auction
-        </h1>
+        {(location === "auctions" || location === "activeLoans") && (
+          <h1 className={`${russo.variable} font-heading text-3xl text-center`}>
+            Select an {location == "auctions" ? "auction" : "active loan"}
+          </h1>
+        )}
       </div>
       <div className="flex-1"></div>
       <div className="p-8 flex justify-center">

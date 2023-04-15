@@ -9,9 +9,10 @@ const AuctionProfile = ({
   img: string;
   collectionName: string;
 }) => {
-  const { setLocation } = useContext(NavigationContext);
+  const { setLocation, setSelectedAuction } = useContext(NavigationContext);
 
   const onClick = () => {
+    setSelectedAuction("1");
     setLocation("auctionDetails");
   };
 

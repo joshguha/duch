@@ -31,7 +31,7 @@ export default function Home() {
           <ConnectButton />
         </div>
         <div
-          className={`flex flex-1 overflow-y-scroll ${
+          className={`flex flex-col flex-1 overflow-y-scroll ${
             fadeOut && "animate-fadeOut"
           }`}
         >
