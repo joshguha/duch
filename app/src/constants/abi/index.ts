@@ -1,3 +1,4 @@
 import duchCoordinatorABI from "./DuchCoordinator.json";
+import duchLoanAuctionABI from "./DuchLoanAuction.json";
 
-export { duchCoordinatorABI };
+export { duchCoordinatorABI, duchLoanAuctionABI };

@@ -1,13 +1,26 @@
 import { ChainsValue, contracts } from "@/constants/contracts";
 import { scanBlocks } from "@/utils/scanBlocks";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { useState, useEffect, useRef } from "react";
-import { useProvider, useChainId, useBlockNumber } from "wagmi";
+import { useProvider, useChainId, erc721ABI, erc20ABI } from "wagmi";
 import useThrottle from "./useThrottle";
+import { duchLoanAuctionABI } from "@/constants/abi";
 
 export type Auction = {
-  img: string;
+  nftCollateralAddress: string;
+  nftCollateralTokenId: BigNumber;
+  loanAuctionAddress: string;
+  auctionStartTime: BigNumber;
+  auctionDuration: BigNumber;
+  principal: BigNumber;
+  maxIRatePerSecond: BigNumber;
+  loanTerm: BigNumber;
+  denominatedToken: string;
+  debtor: string;
   collectionName: string;
+  currentIRate: BigNumber;
+  debtRaised: BigNumber;
+  denominatedTokenName: string;
 };
 
 export const useAuctions = () => {
@@ -25,7 +38,6 @@ export const useAuctions = () => {
     (async function () {
       const pass = await throttle();
       if (!pass) return;
-
       if (!chainId || !provider) return;
 
       const latestAuctions = await fetchAuctions(
@@ -46,12 +58,11 @@ export const useAuctions = () => {
 };
 
 // Fetcher
-
 async function fetchAuctions(
   chainId: ChainsValue,
   provider: ethers.providers.BaseProvider,
   blockNumber: number
-) {
+): Promise<Auction[]> {
   const coordinator = new ethers.Contract(
     contracts.DUCH_COORDINATOR.address[chainId],
     contracts.DUCH_COORDINATOR.abi,
@@ -68,76 +79,53 @@ async function fetchAuctions(
       blockNumber
     );
 
-    console.log("FINAL", results);
+    const auctions: Auction[] = (await Promise.all(
+      results.map(async ({ args }) => {
+        // NFT contract
+        const nftContract = new ethers.Contract(
+          args?.nftCollateralAddress,
+          erc721ABI,
+          provider
+        );
+        const collectionName = await nftContract.name();
+
+        // Denominated Toke  contract
+        const denominatedToken = new ethers.Contract(
+          args?.denominatedToken,
+          duchLoanAuctionABI,
+          provider
+        );
+
+        const denominatedTokenName = await denominatedToken.symbol();
+
+        // DuchLoanAuction contract
+        const loanAuctionContract = new ethers.Contract(
+          args?.loanAuctionAddress,
+          duchLoanAuctionABI,
+          provider
+        );
+
+        const currentIRate: BigNumber =
+          await loanAuctionContract.getCurrentInterestRate();
+
+        const debtRaised: BigNumber = await loanAuctionContract.debt();
+
+        return {
+          ...args,
+          collectionName,
+          currentIRate,
+          debtRaised,
+          denominatedTokenName,
+        };
+      })
+    )) as Auction[];
+
+    console.log(auctions);
+
+    return auctions;
   } catch (e) {
     console.error(e);
   }
 
-  await new Promise((res) => setTimeout(res, 1000));
-  return [
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/J1Bqsh-JPEmH9xLeYu5fiGRLnIdjTIhr1gKHv1ETYaOHWf85dFISBl0hA3VdQY9UOVq4vGdIBmJdNRtvKWjtKVrh-AxDZlUHUbMInw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-    {
-      img: "https://i.seadn.io/gae/oOw7tZlWP1B1TX1yFs0OpL5rM4AsQRks4hDpN6fdk704CeewTAchAr9qiUqUDyb7ktpTVWey4atVRUNFoIL35IB2uKRYekgVEzl-rw?auto=format&w=750",
-      collectionName: "Bored Ape Yacht",
-    },
-  ];
+  return [];
 }

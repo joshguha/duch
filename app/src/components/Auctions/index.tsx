@@ -9,12 +9,8 @@ const Auctions = () => {
       {loading ? (
         <Loader />
       ) : (
-        auctions.map(({ img, collectionName }, index) => (
-          <AuctionProfile
-            key={index}
-            img={img}
-            collectionName={collectionName}
-          />
+        auctions.map((auction, index) => (
+          <AuctionProfile key={index} auction={auction} />
         ))
       )}
     </div>
