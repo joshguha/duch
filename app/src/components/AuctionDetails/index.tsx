@@ -106,7 +106,13 @@ const AuctionDetails = () => {
                 <p className="mb-2 text-l">
                   {formatTimestamp(selectedAuction.auctionStartTime)}
                 </p>
-                <p>Auction started</p>
+                <p>
+                  Auction{" "}
+                  {selectedAuction.auctionStartTime.toNumber() <
+                  Date.now() / 1000
+                    ? "started"
+                    : "will start"}
+                </p>
               </div>
               <div className="mb-5">
                 <p className="mb-2 text-l">
