@@ -1,5 +1,4 @@
 import { useContext } from "react";
-import moment from "moment";
 import { WeiPerEther } from "@ethersproject/constants";
 import { NavigationContext } from "@/contexts/Navigation";
 import { russo } from "@/styles/fonts";
@@ -7,6 +6,7 @@ import { Auction } from "@/hooks/useAuctions";
 import { formatFixed } from "@ethersproject/bignumber";
 import { formatTimestamp } from "@/utils/formatTimestamp";
 import { convertSecondsToDays } from "@/utils/convertSecondsToDays";
+import { convertInterestPerSecondToAPR } from "@/utils/convertInterestPerSecondToAPR";
 
 import img1 from "../../public/fakeApes/1.jpg";
 import img2 from "../../public/fakeApes/2.jpg";
@@ -24,16 +24,6 @@ const AuctionProfile = ({ auction }: { auction: Auction }) => {
     setSelectedAuction("1");
     setLocation("auctionDetails");
   };
-
-  const currentAPR = formatFixed(auction.currentIRate, 18);
-
-  const maxAPR = formatFixed(auction.maxIRatePerSecond, 18);
-
-  const start = moment(auction.auctionStartTime.toNumber() * 1000);
-
-  console.log(
-    formatTimestamp(auction.auctionStartTime.add(auction.auctionDuration))
-  );
 
   return (
     <div
@@ -77,7 +67,9 @@ const AuctionProfile = ({ auction }: { auction: Auction }) => {
       </div>
       <div>
         <p>Current interest rate: </p>
-        <p className="text-green">{currentAPR} APR</p>
+        <p className="text-green">
+          {convertInterestPerSecondToAPR(auction.currentIRate) * 100}% APR
+        </p>
       </div>
       <div>
         <p>Starts: </p>
