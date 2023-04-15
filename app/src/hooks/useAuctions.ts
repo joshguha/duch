@@ -108,10 +108,6 @@ async function fetchAuctions(
         const currentIRate: BigNumber =
           await loanAuctionContract.getCurrentInterestRate();
 
-        console.log(
-          currentIRate.toString(),
-          args?.maxIRatePerSecond.toString()
-        );
         const debtRaised: BigNumber = await loanAuctionContract.debt();
 
         return {

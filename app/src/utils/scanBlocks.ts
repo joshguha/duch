@@ -9,7 +9,7 @@ export async function scanBlocks(
   lastBlock: number
 ) {
   let results: ethers.Event[] = [];
-  console.log(firstBlock, lastBlock);
+
   let block = firstBlock;
   let counter = 1;
   while (block < lastBlock) {
