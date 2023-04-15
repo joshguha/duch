@@ -18,7 +18,7 @@ module.exports = {
     colors: {
       green: "#17ff49",
       dark: "#010501",
-      light: "#ebebeb",
+      white: "#ebebeb",
       offWhite: "#eaede8",
       offBlack: {
         10: "rgb(var(--color-dark-overlay) / 0.08)",

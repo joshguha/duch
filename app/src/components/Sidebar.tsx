@@ -5,13 +5,13 @@ const rubik = Rubik_Spray_Paint({ weight: "400", subsets: ["latin"] });
 
 const Sidebar = () => {
   return (
-    <div className="w-96 bg-light text-dark h-screen  border-r-2 border-offWhite">
+    <div className="flex flex-col w-96 bg-white text-dark h-screen border-r-2 border-offWhite">
       <p className={`${rubik.className} text-6xl text-center my-10`}>DUCH</p>
       <div className="px-8">
         <h1 className={`font-sans text-l`}>
-          A novel NFT-backed lending protocol that auctions loan shares to
-          uncover optimal prices, improve capital efficiency and unlock NFT
-          liquidity.
+          A novel NFT-backed lending protocol that auctions distribution shares
+          of debt to uncover optimal prices, improve capital efficiency and
+          unlock NFT liquidity.
         </h1>
       </div>
       <div
@@ -28,6 +28,14 @@ const Sidebar = () => {
         <h1 className={`${russo.variable} font-heading text-3xl text-center`}>
           Select an auction
         </h1>
+      </div>
+      <div className="flex-1"></div>
+      <div className="p-8 flex justify-center">
+        <button
+          className={`bg-green rounded-xl p-10 py-3 ${russo.variable} font-heading text-dark hover:scale-105 transition`}
+        >
+          Create a Loan Auction
+        </button>
       </div>
     </div>
   );

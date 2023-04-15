@@ -19,7 +19,7 @@ const AuctionProfile = ({
       <div>
         <div className="flex justify-between">
           <p>Debt Raised: </p>
-          <p>Max</p>
+          <p>% / Max</p>
         </div>
         <div className="flex justify-between">
           <p className="text-green">1,243.23 USDCx</p>
@@ -29,6 +29,14 @@ const AuctionProfile = ({
       <div>
         <p>Current interest rate: </p>
         <p className="text-green">12.4% APY</p>
+      </div>
+      <div>
+        <p>Expires: </p>
+        <p className="text-green">12th May, 12:00</p>
+      </div>
+      <div>
+        <p>Term: </p>
+        <p className="text-green">90 days</p>
       </div>
     </div>
   );
