@@ -1,3 +1,4 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 @prb/math/=lib/prb-math/src/
 @superfluid-finance/ethereum-contracts=lib/protocol-monorepo/packages/ethereum-contracts
+forge-std/=lib/forge-std/src/
