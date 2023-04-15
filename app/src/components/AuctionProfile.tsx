@@ -1,3 +1,5 @@
+import { useContext } from "react";
+import { NavigationContext } from "@/contexts/Navigation";
 import { russo } from "@/styles/fonts";
 
 const AuctionProfile = ({
@@ -7,9 +9,16 @@ const AuctionProfile = ({
   img: string;
   collectionName: string;
 }) => {
+  const { setLocation } = useContext(NavigationContext);
+
+  const onClick = () => {
+    setLocation("auctionDetails");
+  };
+
   return (
     <div
       className={`${russo.variable} font-sans p-5 m-5 flex flex-col space-y-3 w-64 bg-offBlack-10 rounded-lg drop-shadow-xl hover:-translate-y-2 transition animate-fadeIn cursor-pointer`}
+      onClick={onClick}
     >
       <img src={img} alt="nft" width="250" height="250" />
       <div className="flex flex-col space-y-1">

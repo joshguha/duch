@@ -30,12 +30,22 @@ module.exports = {
     },
     keyframes: {
       fadeInUp: {
-        "0%, 100%": { transform: "translateY(10px)", opacity: "0" },
+        "0%": { transform: "translateY(10px)", opacity: "0" },
         "100%": { transform: "translateY(0)", opacity: "1" },
+      },
+      fadeIn: {
+        "0%": { opacity: "0" },
+        "100%": { opacity: "1" },
+      },
+      fadeOut: {
+        "0%": { opacity: "1" },
+        "100%": { opacity: "0" },
       },
     },
     animation: {
-      fadeIn: "fadeInUp 1s ease-in-out 1",
+      fadeInUp: "fadeInUp 1s ease-in-out 1",
+      fadeIn: "fadeIn 0.2s ease-in-out 1",
+      fadeOut: "fadeOut 0.2s ease-in-out 1",
     },
   },
   plugins: [],

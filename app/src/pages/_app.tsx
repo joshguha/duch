@@ -6,6 +6,7 @@ import type { AppProps } from "next/app";
 import { configureChains, createClient, WagmiConfig } from "wagmi";
 import { mainnet, polygon } from "wagmi/chains";
 import { publicProvider } from "wagmi/providers/public";
+import AllContextsProvider from "@/contexts/AllContextsProvider";
 
 const { chains, provider, webSocketProvider } = configureChains(
   [mainnet, polygon],
@@ -28,7 +29,9 @@ function MyApp({ Component, pageProps }: AppProps) {
   return (
     <WagmiConfig client={wagmiClient}>
       <RainbowKitProvider chains={chains}>
-        <Component {...pageProps} />
+        <AllContextsProvider>
+          <Component {...pageProps} />
+        </AllContextsProvider>
       </RainbowKitProvider>
     </WagmiConfig>
   );
