@@ -29,7 +29,7 @@ const AuctionDetails = () => {
             {/* Collateral details */}
             <div className="mb-5">
               <p className={`text-4xl mb-5 ${russo.variable} font-heading`}>
-                Auction Details
+                Auction details
               </p>
               <div className="flex items-end space-x-4">
                 <p className={`text-2xl ${russo.variable} font-heading`}>
@@ -80,14 +80,6 @@ const AuctionDetails = () => {
                   <p>Max APR</p>
                 </div>
               </div>
-            </div>
-            {/* User Accept Button */}
-            <div className="flex space-x-12 my-5 mt-10 items-center">
-              <button
-                className={`bg-green rounded-xl p-10 py-3 ${russo.variable} font-heading text-dark hover:scale-105 transition w-48 m-auto`}
-              >
-                Accept Loan
-              </button>
             </div>
           </div>
         </div>

@@ -4,9 +4,11 @@ import Context from "./Context";
 const Provider = ({ children }: { children: ReactNode }) => {
   const [location, setLocation] = useState("auctions");
   const [selectedAuction, setSelectedAuction] = useState("");
+  const [selectedActiveLoan, setSelectedActiveLoan] = useState("");
 
   useEffect(() => {
     if (location !== "auctionDetails") setSelectedAuction("");
+    if (location !== "activeLoanDetails") setSelectedActiveLoan("");
   }, [location]);
 
   return (
@@ -16,6 +18,8 @@ const Provider = ({ children }: { children: ReactNode }) => {
         setLocation,
         selectedAuction,
         setSelectedAuction,
+        selectedActiveLoan,
+        setSelectedActiveLoan,
       }}
     >
       {children}

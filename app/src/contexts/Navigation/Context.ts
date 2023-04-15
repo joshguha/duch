@@ -5,6 +5,8 @@ type NavigationContext = {
   setLocation: Dispatch<SetStateAction<string>>;
   selectedAuction: string;
   setSelectedAuction: Dispatch<SetStateAction<string>>;
+  selectedActiveLoan: string;
+  setSelectedActiveLoan: Dispatch<SetStateAction<string>>;
 };
 
 const Context = createContext<NavigationContext>({
@@ -12,6 +14,8 @@ const Context = createContext<NavigationContext>({
   setLocation: () => {},
   selectedAuction: "",
   setSelectedAuction: () => {},
+  selectedActiveLoan: "",
+  setSelectedActiveLoan: () => {},
 });
 
 export default Context;
