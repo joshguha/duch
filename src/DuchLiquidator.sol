@@ -63,7 +63,9 @@ contract DuchLiquidator {
         uint256 timeRemaining = endTime - block.timestamp;
         // Dutch auction, linear decrease in price over time
         return
-            toUD60x18(timeRemaining).div(toUD60x18(endTime)).mul(startingPrice);
+            toUD60x18(timeRemaining).div(toUD60x18(AUCTION_DURATION)).mul(
+                startingPrice
+            );
     }
 
     /**
